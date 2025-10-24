@@ -5,6 +5,7 @@ A generic Python scraper for extracting content from Microsoft Learn training mo
 ## Features
 
 - ✅ **Generic & Reusable**: Works with any module on Microsoft Learn
+- ✅ **Batch Processing**: Scrape multiple modules from a file
 - ✅ **Complete Scraping**: Extracts all units from a module
 - ✅ **Comprehensive Structure**: Extracts titles, content, lists, images, and links
 - ✅ **Absolute URLs**: Automatically converts relative URLs to absolute URLs
@@ -31,29 +32,59 @@ pip install -r requirements.txt
 ### Basic Syntax
 
 ```bash
-python ms_learn_scraper.py <MODULE_UID> [-o OUTPUT_FILE]
+# Scrape a single module
+python ms_learn_scraper.py <MODULE_UID> [-o OUTPUT_DIR]
+
+# Scrape multiple modules from a file
+python ms_learn_scraper.py -f <UID_FILE> [-o OUTPUT_DIR]
 ```
 
 ### Parameters
 
-- `MODULE_UID` (required): UID of the module to scrape
-- `-o, --output` (optional): JSON output filename (default: `course_data.json`)
+- `MODULE_UID`: Single module UID to scrape
+- `-f, --file`: Path to file containing UIDs (one per line)
+- `-o, --output`: Output directory for JSON files (default: current directory)
+
+**Note**: Either `MODULE_UID` or `-f` is required (mutually exclusive).
 
 ### Examples
 
-#### 1. Scrape Dynamics 365 Finance module
+#### 1. Scrape a single module
 
 ```bash
 python ms_learn_scraper.py learn-dynamics.get-started-financial-management-in-dynamics-365-finance-ops
 ```
 
-#### 2. Scrape Azure Fundamentals module with custom output
+Output: `learn-dynamics_get-started-financial-management-in-dynamics-365-finance-ops.json`
+
+#### 2. Scrape a single module with custom output directory
 
 ```bash
-python ms_learn_scraper.py learn.wwl.describe-cloud-compute -o azure_fundamentals.json
+python ms_learn_scraper.py learn.wwl.describe-cloud-compute -o output_data
 ```
 
-#### 3. View help
+Output: `output_data/learn_wwl_describe-cloud-compute.json`
+
+#### 3. Scrape multiple modules from a file
+
+Create a file `uids.txt`:
+```
+learn-dynamics.get-started-financial-management-in-dynamics-365-finance-ops
+learn-dynamics.business-process-mapping-dynamics-365
+learn.wwl.explore-microsoft-dynamics-365-finance-core-capabilities
+```
+
+Then run:
+```bash
+python ms_learn_scraper.py -f uids.txt -o output_data
+```
+
+Output:
+- `output_data/learn-dynamics_get-started-financial-management-in-dynamics-365-finance-ops.json`
+- `output_data/learn-dynamics_business-process-mapping-dynamics-365.json`
+- `output_data/learn_wwl_explore-microsoft-dynamics-365-finance-core-capabilities.json`
+
+#### 4. View help
 
 ```bash
 python ms_learn_scraper.py --help

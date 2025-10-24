@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import json
 import sys
 import argparse
+import os
 from typing import Dict, List, Optional
 import time
 from urllib.parse import urljoin
@@ -82,13 +83,9 @@ class MicrosoftLearnScraper:
                 
                 for link in links:
                     href = link.get('href', '')
-                    # Unit links are relative and start with a number followed by dash
-                    # e.g., "1-introduction", "2-benefits", etc.
                     if href and not href.startswith(('http', '#', '/')):
-                        # Check if it looks like a unit slug (starts with number-text pattern)
-                        if href[0].isdigit() and '-' in href:
-                            full_url = f"{module_url}{href}/"
-                            unit_urls.append(full_url)
+                        full_url = f"{module_url}{href}/"
+                        unit_urls.append(full_url)
             
             return unit_urls
             
@@ -304,36 +301,54 @@ def main():
         description='Scrape Microsoft Learn training modules',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
-Example:
-  python test_scraper.py learn-dynamics.get-started-financial-management-in-dynamics-365-finance-ops
-  python test_scraper.py learn-dynamics.get-started-financial-management-in-dynamics-365-finance-ops -o output.json
+Examples:
+  # Single UID
+  python test_scraper.py learn-dynamics.get-started-financial-management-in-dynamics-365-finance-ops -o output_dir
+  
+  # UID file (one per line)
+  python test_scraper.py uids.txt -o output_dir
         '''
     )
     
-    parser.add_argument('uid', help='Module UID to scrape')
-    parser.add_argument('-o', '--output', default='course_data.json', 
-                       help='Output JSON file (default: course_data.json)')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-f', '--file', help='File containing UIDs (one per line)')
+    group.add_argument('uid', nargs='?', help='Single Module UID to scrape')
+    
+    parser.add_argument('-o', '--output', default='.', 
+                       help='Output directory for JSON files (default: current directory)')
     
     args = parser.parse_args()
     
-    try:
-        scraper = MicrosoftLearnScraper(args.uid)
-        
-        print(f"Fetching module metadata for: {args.uid}", file=sys.stderr)
-        scraper.fetch_module_metadata()
-        
-        print(f"Module: {scraper.module_data.get('title')}", file=sys.stderr)
-        print(f"Units: {len(scraper.module_data.get('units', []))}", file=sys.stderr)
-        
-        scraper.scrape_all_units()
-        scraper.save_to_json(args.output)
-        
-        print("\nScraping completed successfully!", file=sys.stderr)
-        
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
+    os.makedirs(args.output, exist_ok=True)
+    
+    # Get UIDs list
+    if args.file:
+        try:
+            with open(args.file, 'r') as f:
+                uids = [line.strip() for line in f if line.strip()]
+        except Exception as e:
+            print(f"Error reading UID file: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.uid:
+        uids = [args.uid]
+    else:
+        parser.error("Must provide either UID or --file")
+    
+    for uid in uids:
+        try:
+            scraper = MicrosoftLearnScraper(uid)
+            print(f"\nFetching: {uid}", file=sys.stderr)
+            scraper.fetch_module_metadata()
+            
+            print(f"Module: {scraper.module_data.get('title')}", file=sys.stderr)
+            scraper.scrape_all_units()
+            output_file = f"{args.output}/{uid.replace('.', '_')}.json"
+            scraper.save_to_json(output_file)
+            print(f"Saved: {output_file}", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"Error {uid}: {e}", file=sys.stderr)
+            continue
 
 if __name__ == "__main__":
     main()
